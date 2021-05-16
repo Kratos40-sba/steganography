@@ -2,6 +2,8 @@ package main
 
 import (
 	"archive/zip"
+	"bufio"
+	"bytes"
 	"image"
 	"image/jpeg"
 	"io"
@@ -96,11 +98,39 @@ func hideZipFileInImage(zipFile, imageFile *os.File) *os.File {
 	return f
 }
 func detectSteganography(imageFile *os.File) bool {
+	//  Zip signature = "\x50\x4b\x03\x04"
+	f, err := os.Open(imageFile.Name())
+	if err != nil {
+		log.Fatal(err)
+	}
+	bfReader := bufio.NewReader(f)
+	fs, _ := f.Stat()
+	for i := int64(0); i < fs.Size(); i++ {
+		b, err := bfReader.ReadByte()
+		if err != nil {
+			log.Fatal(err)
+		}
+		if b == '\x50' {
+			bs := make([]byte, 3)
+			bs, err = bfReader.Peek(3)
+			if err != nil {
+				log.Fatal(err)
+			}
+			if bytes.Equal(bs, []byte{'\x4b', '\x03', '\x04'}) {
+				return true
+			}
+
+		}
+	}
 	return false
 }
 func main() {
 	imageFile := encodeImage("test.jpg", generateImage(100, 200))
 	zipFile := createCompressedFiles("test.zip")
 	steganographyFile := hideZipFileInImage(zipFile, imageFile)
-	detectSteganography(steganographyFile)
+	if detectSteganography(steganographyFile) {
+		log.Println("Steganography detected ")
+	} else {
+		log.Println("No ZIP in the image file ")
+	}
 }
