@@ -1,0 +1,15 @@
+Steganography is the practice of hiding a message in an non secret message
+In the digital world people can hide any type of data inside an image / audio or
+a video file , The original Quality may or may not suffer from the process.
+Some steganography algorithms are complex and hide the original binary data in
+the single lowest bit of each byte, only denigrating the original quality slightly.
+Other steganography algorithms are simpler and just combine an image file and
+an archive into a single file.
+We will look at how to hide an archive inside an image and also
+how to detect hidden archives .
+----------------------------------------------------------------------------
+----------------------- Generating an image with random noise --------------
+This program will create a JPEG image with every pixel set to a random color.
+----------------------------------------------------------------------------
+----------------------- Creating Zip file ----------------------------------
+----------------------- Copy image and zip file into new image file --------
