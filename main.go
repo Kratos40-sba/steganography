@@ -97,7 +97,7 @@ func hideZipFileInImage(zipFile, imageFile *os.File) *os.File {
 
 	return f
 }
-func detectSteganography(imageFile *os.File) bool {
+func detectSteganography(imageFile *os.File) (bool, int64) {
 	//  Zip signature = "\x50\x4b\x03\x04"
 	f, err := os.Open(imageFile.Name())
 	if err != nil {
@@ -117,19 +117,20 @@ func detectSteganography(imageFile *os.File) bool {
 				log.Fatal(err)
 			}
 			if bytes.Equal(bs, []byte{'\x4b', '\x03', '\x04'}) {
-				return true
+				return true, i
 			}
 
 		}
 	}
-	return false
+	return false, -1
 }
 func main() {
 	imageFile := encodeImage("test.jpg", generateImage(100, 200))
 	zipFile := createCompressedFiles("test.zip")
 	steganographyFile := hideZipFileInImage(zipFile, imageFile)
-	if detectSteganography(steganographyFile) {
-		log.Println("Steganography detected ")
+	e, i := detectSteganography(steganographyFile)
+	if e {
+		log.Printf("Steganography detected at byte Number %d \n", i)
 	} else {
 		log.Println("No ZIP in the image file ")
 	}
