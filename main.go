@@ -4,6 +4,7 @@ import (
 	"archive/zip"
 	"bufio"
 	"bytes"
+	"fmt"
 	"image"
 	"image/jpeg"
 	"io"
@@ -13,7 +14,7 @@ import (
 )
 
 func generateImage(x1, y1 int) *image.RGBA {
-	im := image.NewRGBA(image.Rect(0, 0, 100, 200))
+	im := image.NewRGBA(image.Rect(0, 0, x1, y1))
 	for pix := 0; pix < x1*y1; pix++ {
 		pixelOffset := pix * 4
 		im.Pix[0+pixelOffset] = uint8(rand.Intn(256))
@@ -28,14 +29,18 @@ func encodeImage(fileName string, img *image.RGBA) *os.File {
 	if err != nil {
 		log.Fatal(err)
 	}
+	defer imageFile.Close()
 	err = jpeg.Encode(imageFile, img, nil)
 	if err != nil {
 		log.Fatal(err)
 	}
-	err = imageFile.Close()
-	if err != nil {
-		log.Fatal(err)
-	}
+	/*
+		err = imageFile.Close()
+			if err != nil {
+				log.Fatal(err)
+			}
+	*/
+
 	return imageFile
 
 }
@@ -71,7 +76,7 @@ func createCompressedFiles(fileName string) *os.File {
 
 	return zipFile
 }
-func hideZipFileInImage(zipFile, imageFile *os.File) *os.File {
+func hideZipFileInImage(zipFile, imageFile *os.File) (*os.File, int64) {
 	f1, err := os.Open(imageFile.Name())
 	if err != nil {
 		log.Fatal(err)
@@ -94,12 +99,12 @@ func hideZipFileInImage(zipFile, imageFile *os.File) *os.File {
 	if err != nil {
 		log.Fatal(err)
 	}
-
-	return f
+	return f, getSize(f)
 }
-func detectSteganography(imageFile *os.File) (bool, int64) {
+func detectSteganography(steganographyFile *os.File, steganographyFileSize int64) bool {
 	//  Zip signature = "\x50\x4b\x03\x04"
-	f, err := os.Open(imageFile.Name())
+	f, err := os.Open(steganographyFile.Name())
+	var j int64
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -117,21 +122,40 @@ func detectSteganography(imageFile *os.File) (bool, int64) {
 				log.Fatal(err)
 			}
 			if bytes.Equal(bs, []byte{'\x4b', '\x03', '\x04'}) {
-				return true, i
+				j = i
+				goto out
 			}
 
 		}
 	}
-	return false, -1
+out:
+	out, _ := os.Create("out.txt")
+	br := bufio.NewWriter(out)
+
+	for k := j; k < steganographyFileSize; k++ {
+		b, _ := bfReader.ReadByte()
+		_ = br.WriteByte(b)
+	}
+	out.Close()
+	fmt.Println(steganographyFileSize, j)
+	return true
+
+	return false
+}
+func getSize(f *os.File) int64 {
+	fs, _ := f.Stat()
+	return fs.Size()
 }
 func main() {
 	imageFile := encodeImage("test.jpg", generateImage(100, 200))
 	zipFile := createCompressedFiles("test.zip")
-	steganographyFile := hideZipFileInImage(zipFile, imageFile)
-	e, i := detectSteganography(steganographyFile)
+	steganographyFile, steganographyFileSize := hideZipFileInImage(zipFile, imageFile)
+	e := detectSteganography(steganographyFile, steganographyFileSize)
+
 	if e {
-		log.Printf("Steganography detected at byte Number %d \n", i)
+		log.Printf("Steganography detected ")
 	} else {
 		log.Println("No ZIP in the image file ")
 	}
+
 }
